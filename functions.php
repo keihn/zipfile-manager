@@ -3,17 +3,17 @@
 if($_SERVER['REQUEST_METHOD'] === 'POST'){
 
     session_start();
-    $storageLocation = __DIR__ . '/storage/';
+    $storageLocation = __DIR__ . DIRECTORY_SEPARATOR . 'storage';
     $request = $_GET['action'];
     $export = [];
-    unset($_SESSION['file']);
+    // unset($_SESSION['file']);
 
     switch ($request) {
         case 'delete':
             deleteFile();
             break;
-        case 'add':
-            addFile();
+        case 'append':
+            appendFile();
             break;
         
         default:
@@ -38,15 +38,18 @@ function uploadFile(){
         $_SESSION['errors'] = 'Unable to read zip file';
     }
 
-    $newfileName = $storageLocation . hash('sha256', time()) . '.zip';
+    $newfileName = $storageLocation . DIRECTORY_SEPARATOR . hash('sha256', time()) . '.zip';
+
+
 
     if(file_exists($newfileName)){
-        $newfileName = $storageLocation . hash('sha256', time()) . '.zip';
+        $newfileName = $storageLocation . DIRECTORY_SEPARATOR . hash('sha256', time()) . '.zip';
     }
+
 
     if(move_uploaded_file($temp_name, $newfileName)){
         try {
-            $fileID = explode('.', explode('/',$newfileName)[2])[0];
+            $fileID = explode('.', end(explode(DIRECTORY_SEPARATOR,$newfileName)))[0];
             $zip = new ZipArchive();
             $zip->open($newfileName);
             
@@ -76,7 +79,7 @@ function deleteFile(){
     $fileName = $_POST['file-name'];
     $index = $_POST['file-index'];
     $fileID = $_POST['fileID'];
-    $storedFile = $storageLocation . $fileID . '.zip';
+    $storedFile = $storageLocation . DIRECTORY_SEPARATOR . $fileID . '.zip';
 
     if(file_exists($storedFile) && is_writable($storedFile))
     {
@@ -106,8 +109,44 @@ function deleteFile(){
 }
 
 
-function addFile(){
-    //
+function appendFile(){
+    global $export;
+    global $storageLocation;
+
+    $temp_name = $_FILES['file']['tmp_name'];
+    $error = $_FILES['file']['error'];
+    $fileID = $_POST['id'];
+    $archive = $storageLocation . DIRECTORY_SEPARATOR . $fileID . '.zip';
+    $name = $_FILES['file']['name'];
+    $newfileName = $storageLocation . DIRECTORY_SEPARATOR . $name;
+
+    if(file_exists($archive) && is_writable($archive))
+    {
+        if(move_uploaded_file($temp_name, $newfileName)){
+            try {
+                $zip = new ZipArchive();
+                $zip->open($archive);
+                if($zip->addFile($newfileName, $name)){
+                    $archiveData = fetchArchiveContents($archive, $export);
+                    $_SESSION['id'] = $fileID;
+                    $_SESSION['file']['data'] = $archiveData;
+                    $zip->close();
+                    unlink($newfileName);
+                    header('Location: index.php');
+                }
+            } catch (\Exception $e) {
+                echo $e->getMessage();
+                $_SESSION['errors']['file_error'] = 'Unable to read zip file';
+                die;
+                }
+        }else{
+            echo "file upload failed";
+            die;
+        }
+    }else{
+        $_SESSION['errors']['exist'] = 'File does not exist or is not writable';
+        echo 'File does not exist or is not writable';
+    }
 }
 
 function fetchArchiveContents(string $file, array $export){

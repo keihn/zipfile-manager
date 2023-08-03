@@ -40,12 +40,9 @@ function uploadFile(){
 
     $newfileName = $storageLocation . DIRECTORY_SEPARATOR . hash('sha256', time()) . '.zip';
 
-
-
     if(file_exists($newfileName)){
         $newfileName = $storageLocation . DIRECTORY_SEPARATOR . hash('sha256', time()) . '.zip';
     }
-
 
     if(move_uploaded_file($temp_name, $newfileName)){
         try {
@@ -77,7 +74,6 @@ function deleteFile(){
     global $export;
 
     $fileName = $_POST['file-name'];
-    $index = $_POST['file-index'];
     $fileID = $_POST['fileID'];
     $storedFile = $storageLocation . DIRECTORY_SEPARATOR . $fileID . '.zip';
 
@@ -161,5 +157,3 @@ function fetchArchiveContents(string $file, array $export){
     }
     return false;
 }
-
-//add file delete
